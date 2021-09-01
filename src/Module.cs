@@ -40,6 +40,7 @@ class Module
         RegisterFunction("assign @O0 = @I0 & @I1;", 2, 1, "AND2A");
         RegisterFunction("assign @O0 = ~(@I0 | @I1);", 2, 1, "NR2A", "NR2C");
         RegisterFunction("assign @O0 = ~(@I0 & @I1);", 2, 1, "ND2A", "ND2C");
+        RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2);", 3, 1, "NR3A");
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2);", 3, 1, "ND3A", "ND3C");
         RegisterFunction("assign @O0 = @I0 & @I1 & @I2;", 3, 1, "AND3A");
         RegisterFunction("assign @O0 = ~((@I0 & @I1)|(@I2 & @I3));", 4, 1, "AO2A", "AO2C");
@@ -58,6 +59,7 @@ class Module
         RegisterFunction($"LD1A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.en(@I1));", 2,2, "LD1A");
         RegisterFunction($"FD2A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1),.rL(@I2));", 3,2, "FD2A");
         RegisterFunction($"FD4A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1),.sL(@I2));", 3,2, "FD4A");
+        RegisterFunction($"JK @N_inst (.q(@O0),.qL(@O1),.j(@I0),.k(@I1),.r(@I2),.clk(@I3));", 4,2, "JK");
     }
 
     string Translate(Code code)
@@ -431,7 +433,7 @@ class Module
         int moduleLine = name.getLine();
         DumpLinesUpto(moduleLine);
 
-        DumpStringWithOriginalLine($"module {name.getValue()}", name);
+        DumpStringWithOriginalLine($"module m_{name.getValue()}", name);
         DumpStringWithOriginalLine($"(", name);
         int a;
         DumpLinesUpto(inputs[0].getLine());

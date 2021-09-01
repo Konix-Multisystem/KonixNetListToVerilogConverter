@@ -15,7 +15,8 @@ namespace K2V
             //string path = "/home/snax/fpga/OLDDIRS/SS1NET/CLOCK.NET";
             //string path = "/home/snax/fpga/OLDDIRS/SS1NET/IODEC.NET";
             //string path = "/home/snax/fpga/OLDDIRS/SS1NET/STAT.NET";
-            string path = "/home/snax/fpga/OLDDIRS/SS1NET/MEM.NET";
+            //string path = "/home/snax/fpga/OLDDIRS/SS1NET/MEM.NET";
+            string path = "/home/snax/fpga/OLDDIRS/SS1NET/INT.NET";
 
             //Tokenizer.Test(path);
 
