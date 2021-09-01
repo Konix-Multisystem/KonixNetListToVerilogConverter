@@ -1,0 +1,25 @@
+
+public enum TokenType 
+{
+	NONE,
+
+	ASSIGN, SEMICOLON, COMMA,
+	
+	LPAREN, RPAREN,     // ( )
+	
+	COMPILE,
+	DIRECTORY,
+	MASTER,
+	INPUTS,
+	OUTPUTS,
+	LEVEL,
+	FUNCTION,
+	DEFINE,
+
+	END,
+	MODULE,
+
+	IDENTIFIER,
+	NUMBER,
+	EOF,
+}
