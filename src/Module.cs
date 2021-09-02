@@ -34,6 +34,8 @@ class Module
     {
         functions=new Dictionary<string, Function>();
 
+        // ENA 2 input exclusive nor
+
         RegisterFunction("assign @O0 = @I0;", 1, 1, "B1A", "B3A");
         RegisterFunction("assign @O0 = ~@I0;", 1, 1, "N1A", "N1B", "N1C");
         RegisterFunction("assign @O0 = @I0 | @I1;", 2, 1, "OR2A");
@@ -41,7 +43,7 @@ class Module
         RegisterFunction("assign @O0 = ~(@I0 | @I1);", 2, 1, "NR2A", "NR2C");
         RegisterFunction("assign @O0 = ~(@I0 & @I1);", 2, 1, "ND2A", "ND2C");
         RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2);", 3, 1, "NR3A");
-        RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2);", 3, 1, "ND3A", "ND3C");
+        RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2);", 3, 1, "ND3A", "ND3B", "ND3C");
         RegisterFunction("assign @O0 = @I0 & @I1 & @I2;", 3, 1, "AND3A");
         RegisterFunction("assign @O0 = ~((@I0 & @I1)|(@I2 & @I3));", 4, 1, "AO2A", "AO2C");
         RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3);", 4, 1, "NR4A", "NR4C");
@@ -49,17 +51,27 @@ class Module
         RegisterFunction("assign @O0 = ~(@I0 & ~(@I1 & @I2 & @I3 & @I4));", 5, 1, "N4AND");   //translated from MODULE in IODEC
         RegisterFunction("assign @O0 = @I0 | @I1 | @I2 | @I3 | @I4;", 5, 1, "OR5A");
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4);", 5, 1, "ND5A");
-        RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4 & @I5);", 6, 1, "ND6A");
+        RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4 & @I5);", 6, 1, "ND6A", "ND6B");
+        RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3 | @I4 | @I5 | @I6 | @I7);", 8, 1, "NR8A");
+        RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4 & @I5 & @I6 & @I7 & @I8 & @I9;", 10, 1, "AND10");
+        RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4 & @I5 & @I6 & @I7 & @I8 & @I9 & @I10;", 11, 1, "AND11");
+        RegisterFunction("assign @O0 = (@I0 ~^ @I9) & (@I1 ~^ @I10) & (@I2 ~^ @I11) & (@I3 ~^ @I12) & (@I4 ~^ @I13) & (@I5 ~^ @I14) & (@I6 ~^ @I15) & (@I7 ~^ @I16) & (@I8 ~^ @I17) & @I18;", 9+9+1, 1, "EQU9");
 
         // Not synthesizable (will need to be replaced)
         RegisterFunction("assign @O0 = ~@I1 ? @I0 : 1'bZ;", 2, 1, "MACZINVB1");
+        RegisterFunction("assign @O0 = @I1 ? (~@I0) : 1'bZ;", 2, 1, "BTS5A");         // 5 is inverting output,4 is normal?
+        RegisterFunction($"ZTLATCH1 @N_inst (.QB(@O0),.D(@I1),.CLK(@I2),.ENL(@I3));", 4,1, "ZTLATCH1"); // TODO add verify that I0==O0
         
 
         // Requires Module Implementations
         RegisterFunction($"LD1A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.en(@I1));", 2,2, "LD1A");
+        RegisterFunction($"FD1A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1));", 2,2, "FD1A");
         RegisterFunction($"FD2A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1),.rL(@I2));", 3,2, "FD2A");
         RegisterFunction($"FD4A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1),.sL(@I2));", 3,2, "FD4A");
         RegisterFunction($"JK @N_inst (.q(@O0),.qL(@O1),.j(@I0),.k(@I1),.r(@I2),.clk(@I3));", 4,2, "JK");
+        RegisterFunction($"FJK2A @N_inst (.q(@O0),.qL(@O1),.j(@I0),.k(@I1),.clk(@I2),.rL(@I3));", 4,2, "FJK2A");
+        RegisterFunction($"SYNCNT0 @N_inst (.Q(@O0),.QB(@O1),.D(@I0),.CLK(@I1),.CLR(@I2),.LDL(@I3));", 4,2, "SYNCNT0");
+        RegisterFunction($"SYNCNT @N_inst (.Q(@O0),.QB(@O1),.CO(@O2),.D(@I0),.CLK(@I1),.CLR(@I2),.LDL(@I3),.CI(@I4));", 5,3, "SYNCNT");
     }
 
     string Translate(Code code)
