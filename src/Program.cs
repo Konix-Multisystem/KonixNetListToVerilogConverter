@@ -17,6 +17,8 @@ namespace K2V
             "PC.NET",
             "PWM.NET",
             "DMA.NET",
+            "PRAM.NET",
+            "DRAM.NET"
         };
 
         // VIDEO HARDWARE

@@ -99,8 +99,9 @@ class Module
         RegisterFunction("assign @O0 = @I0 | @I1 | @I2 | @I3 | @I4;", 5, 1, "OR5A");
         RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4;", 5, 1, "AND5A", "AND5B");
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4);", 5, 1, "ND5A", "ND5B");
-        RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3 | @I4);", 5, 1, "NR5A");
+        RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3 | @I4);", 5, 1, "NR5A", "NR5B");
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4 & @I5);", 6, 1, "ND6A", "ND6B", "ND6C");
+        RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3 | @I4 | @I5);", 6, 1, "NR6B");
         RegisterFunction("assign @O0 = ~((@I0 & @I1) | (@I2 & @I3) | (@I4 & @I5));", 6, 1, "AO11A");    // translated from MACROS.HDL
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4 & @I5 & @I6 & @I7);", 8, 1, "ND8A");
         RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3 | @I4 | @I5 | @I6 | @I7);", 8, 1, "NR8A");
