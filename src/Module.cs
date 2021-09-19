@@ -23,11 +23,17 @@ class Module
     Dictionary<string, Function> functions;
     Dictionary<string, Module> modules;
 
-    public Module()
+    readonly string originalFilePath;
+
+    public Module(string fromFilePath)
     {
         functions=new Dictionary<string, Function>();
         modules=new Dictionary<string, Module>();
+        linesThatNeedCommenting=new HashSet<int>();
+        originalFilePath = fromFilePath;
+        firstLine=1;
     }
+    int firstLine;
 
     void RegisterFunction(string translate, int numInputs, int numOutputs, params string[] aliases)
     {
@@ -42,13 +48,41 @@ class Module
         // Registers a translated module (ie. VID.NET uses the already translated CLOCK.NET etc)
         modules.Add(originalName, input);
     }
+    
+    public void RegisterModules(IEnumerable<Module> inputs)
+    {
+        foreach (var m in inputs)
+        {
+            if (m.name.getValue() != name.getValue())
+            {
+                RegisterModule(m, m.name.getValue());
+            }
+        }
+    }
+
+    static readonly HashSet<string> excludeModules = new HashSet<string>(new [] {
+        "MACZINVB1",
+        "ZTLATCH1",
+        "ZBUF1",
+    });
+    static readonly HashSet<string> bidirectionalDriver = new HashSet<string>(new [] {
+        "MACZINVB1",
+        "ZTLATCH1",
+        "ZBUF1",
+        "BTS4A", 
+        "BTS4B", 
+        "BTS4C",
+        "BTS5A",
+        "BTS5B"
+    });
+
 
     void RegisterFunctions()
     {
-        // ENA 2 input exclusive nor
         RegisterFunction("assign @O0 = @I0;", 1, 1, "B3A");                                 // B3A is non inverting power buffer
         RegisterFunction("assign @O0 = ~@I0;", 1, 1, "B1A", "N1A", "N1B", "N1C", "N1D");    // B1A is an inverting power buffer
         RegisterFunction("assign @O0 = @I0 ^ @I1;", 2, 1, "EOA", "EOB");
+        RegisterFunction("assign @O0 = ~(@I0 ^ @I1);", 2, 1, "ENA");
         RegisterFunction("assign @O0 = @I0 | @I1;", 2, 1, "OR2A", "OR2C");
         RegisterFunction("assign @O0 = @I0 & @I1;", 2, 1, "AND2A", "AND2C");
         RegisterFunction("assign @O0 = ~(@I0 | @I1);", 2, 1, "NR2A", "NR2B", "NR2C");
@@ -63,51 +97,60 @@ class Module
         RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3;", 4, 1, "AND4A");
         RegisterFunction("assign @O0 = ~(@I0 & ~(@I1 & @I2 & @I3 & @I4));", 5, 1, "N4AND");   //translated from MODULE in IODEC
         RegisterFunction("assign @O0 = @I0 | @I1 | @I2 | @I3 | @I4;", 5, 1, "OR5A");
-        RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4;", 5, 1, "AND5A");
-        RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4);", 5, 1, "ND5A");
+        RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4;", 5, 1, "AND5A", "AND5B");
+        RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4);", 5, 1, "ND5A", "ND5B");
+        RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3 | @I4);", 5, 1, "NR5A");
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4 & @I5);", 6, 1, "ND6A", "ND6B", "ND6C");
         RegisterFunction("assign @O0 = ~((@I0 & @I1) | (@I2 & @I3) | (@I4 & @I5));", 6, 1, "AO11A");    // translated from MACROS.HDL
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3 & @I4 & @I5 & @I6 & @I7);", 8, 1, "ND8A");
         RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3 | @I4 | @I5 | @I6 | @I7);", 8, 1, "NR8A");
-        RegisterFunction("assign @O0 = @I0 | @I1 | @I2 | @I3 | @I4 | @I5 | @I6 | @I7;", 8, 1, "MACAND8");
-        RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4 & @I5 & @I6 & @I7 & @I8 & @I9;", 10, 1, "AND10");
-        RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4 & @I5 & @I6 & @I7 & @I8 & @I9 & @I10;", 11, 1, "AND11");
-        RegisterFunction("assign @O0 = (@I0 ~^ @I9) & (@I1 ~^ @I10) & (@I2 ~^ @I11) & (@I3 ~^ @I12) & (@I4 ~^ @I13) & (@I5 ~^ @I14) & (@I6 ~^ @I15) & (@I7 ~^ @I16) & (@I8 ~^ @I17) & @I18;", 9+9+1, 1, "EQU9");
+        //RegisterFunction("assign @O0 = @I0 | @I1 | @I2 | @I3 | @I4 | @I5 | @I6 | @I7;", 8, 1, "MACAND8");
+        //RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4 & @I5 & @I6 & @I7 & @I8 & @I9;", 10, 1, "AND10");
+        //RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4 & @I5 & @I6 & @I7 & @I8 & @I9 & @I10;", 11, 1, "AND11");
+        //RegisterFunction("assign @O0 = (@I0 ~^ @I9) & (@I1 ~^ @I10) & (@I2 ~^ @I11) & (@I3 ~^ @I12) & (@I4 ~^ @I13) & (@I5 ~^ @I14) & (@I6 ~^ @I15) & (@I7 ~^ @I16) & (@I8 ~^ @I17) & @I18;", 9+9+1, 1, "EQU9");
 
-        RegisterFunction("assign @O0 = ~((~(@I0 & @I1)) & (~(@I2 & @I3)));", 4, 1, "MUX2");
+        //RegisterFunction("assign @O0 = ~(~((@I0 & @I1)|(@I2 & @I3)));", 4, 1, "MUX");
+        //RegisterFunction("assign @O0 = ~((~(@I0 & @I1)) & (~(@I2 & @I3)));", 4, 1, "MUX2");
 
         // Multiple out, but short enough to not need function
-        RegisterFunction("assign @O0 = ~@I0; assign @O1 = ~@I1;", 2, 2, "MACINV2");
-        RegisterFunction("assign @O0 = @I0 ^ @I1; assign @O1 = @I0 & @I1;", 2, 2, "HALFADD");
+        //RegisterFunction("assign @O0 = ~@I0; assign @O1 = ~@I1;", 2, 2, "MACINV2");
+        //RegisterFunction("assign @O0 = @I0 ^ @I1; assign @O1 = @I0 & @I1;", 2, 2, "HALFADD");
 
         // Not 100%
 
-        RegisterFunction("assign @O0 = ~(@I2 ? @I1 : @I0);", 3, 1, "MX21LB");   // Inverting output?
+        RegisterFunction("assign @O0 = ~(@I2 ? @I1 : @I0);", 3, 1, "MX21LA", "MX21LB");   // Inverting output  (based on MUX21l)
 
 
 
         // Not synthesizable (will need to be replaced)
-        RegisterFunction("assign @O0 = ~@I1 ? @I0 : 1'bZ;", 2, 1, "MACZINVB1");
-        RegisterFunction("assign @O0 = @I1 ? @I0 : 1'bZ;", 2, 1, "BTS4A", "BTS4B", "BTS4C");         // 5 is inverting output,4 is normal?
-        RegisterFunction("assign @O0 = @I1 ? (~@I0) : 1'bZ;", 2, 1, "BTS5A");         // 5 is inverting output,4 is normal?
-        RegisterFunction($"ZTLATCH1 @N_inst (.QB(@O0),.D(@I1),.CLK(@I2),.ENL(@I3));", 4,1, "ZTLATCH1"); // TODO add verify that I0==O0
+        //RegisterFunction("assign @O0 = ~@I1 ? @I0 : 1'bZ;", 2, 1, "MACZINVB1");
+        //RegisterFunction("assign @O0 = @I1 ? @I0 : 1'bZ;", 2, 1, "BTS4A", "BTS4B", "BTS4C");         // 5 is inverting output,4 is normal?
+        //RegisterFunction("assign @O0 = @I1 ? (~@I0) : 1'bZ;", 2, 1, "BTS5A");         // 5 is inverting output,4 is normal?
+        //RegisterFunction($"ZTLATCH1 @N_inst (.QB(@O0),.D(@I1),.CLK(@I2),.ENL(@I3));", 4,1, "ZTLATCH1"); // TODO add verify that I0==O0
         
+        // Ported to non tristate bus style
+        RegisterFunction("assign @TO0 = @I0; assign @TE0 = ~@I1;@T+0 ", 2, 1, "MACZINVB1");
+        RegisterFunction("assign @TO0 = @I0; assign @TE0 = @I1;@T+0 ", 2, 1, "BTS4A", "BTS4B", "BTS4C", "ZBUF1");         // 5 is inverting output,4 is normal?
+        RegisterFunction("assign @TO0 = ~@I0; assign @TE0 = @I1;@T+0 ", 2, 1, "BTS5A", "BTS5B");         // 5 is inverting output,4 is normal?
+        RegisterFunction($"wire @N_@TO0,@N_@TO0L; LD1A @N_inst (.q(@N_@TO0),.qL(@N_@TO0L),.d(@I1),.en(@I2)); assign @TO0 = @I0; assign @TE0 = @I3;@T+0 ", 4,1, "ZTLATCH1");
 
         // Requires Module Implementations
-        RegisterFunction($"SR @N_inst (.Q(@O0),.QL(@O1),.S(@I0),.R(@I1));", 2,2, "SR");
+        //RegisterFunction($"SR @N_inst (.Q(@O0),.QL(@O1),.S(@I0),.R(@I1));", 2,2, "SR");
         RegisterFunction($"LD1A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.en(@I1));", 2,2, "LD1A");
         RegisterFunction($"LD2A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.en(@I1));", 2,2, "LD2A");
         RegisterFunction($"FD1A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1));", 2,2, "FD1A");
-        RegisterFunction($"FULLADD @N_inst (.Q(@O0),.CO(@O1),.A(@I0),.B(@I1),.CI(@I2));", 3,2, "FULLADD");
+        //RegisterFunction($"FULLADD @N_inst (.Q(@O0),.CO(@O1),.A(@I0),.B(@I1),.CI(@I2));", 3,2, "FULLADD");
         RegisterFunction($"FD2A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1),.rL(@I2));", 3,2, "FD2A");
+        RegisterFunction($"FD3A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1),.rL(@I2),.sL(@I3));", 4,2, "FD3A");
         RegisterFunction($"FD4A @N_inst (.q(@O0),.qL(@O1),.d(@I0),.clk(@I1),.sL(@I2));", 3,2, "FD4A");
-        RegisterFunction($"JK @N_inst (.q(@O0),.qL(@O1),.j(@I0),.k(@I1),.r(@I2),.clk(@I3));", 4,2, "JK");
+        //RegisterFunction($"JK @N_inst (.q(@O0),.qL(@O1),.j(@I0),.k(@I1),.r(@I2),.clk(@I3));", 4,2, "JK");
+        RegisterFunction($"FJK1A @N_inst (.q(@O0),.qL(@O1),.j(@I0),.k(@I1),.clk(@I2));", 3,2, "FJK1A");
         RegisterFunction($"FJK2A @N_inst (.q(@O0),.qL(@O1),.j(@I0),.k(@I1),.clk(@I2),.rL(@I3));", 4,2, "FJK2A");
-        RegisterFunction($"SYNCNT0 @N_inst (.Q(@O0),.QB(@O1),.D(@I0),.CLK(@I1),.CLR(@I2),.LDL(@I3));", 4,2, "SYNCNT0");
-        RegisterFunction($"SYNCNT @N_inst (.Q(@O0),.QB(@O1),.CO(@O2),.D(@I0),.CLK(@I1),.CLR(@I2),.LDL(@I3),.CI(@I4));", 5,3, "SYNCNT");
-        RegisterFunction($"MUX4 @N_inst (.Q(@O0),.A(@I0),.B(@I1),.D_0(@I2),.D_1(@I3),.D_2(@I4),.D_3(@I5));", 6,1, "MUX4");
-        RegisterFunction($"LFUBIT @N_inst (.DOUT(@O0),.SRCD(@I0),.DSTD(@I1),.LFUC_0(@I2),.LFUC_1(@I3),.LFUC_2(@I4),.LFUC_3(@I5));", 6,1, "LFUBIT");
-        RegisterFunction($"LSCNTEL @N_inst (.Q(@O0),.QL(@O1),.CO(@O2),.D(@I0),.LD(@I1),.LDL(@I2),.CLK(@I3),.CI(@I4),.RSTL(@I5));", 6,3, "LSCNTEL");
+        //RegisterFunction($"SYNCNT0 @N_inst (.Q(@O0),.QB(@O1),.D(@I0),.CLK(@I1),.CLR(@I2),.LDL(@I3));", 4,2, "SYNCNT0");
+        //RegisterFunction($"SYNCNT @N_inst (.Q(@O0),.QB(@O1),.CO(@O2),.D(@I0),.CLK(@I1),.CLR(@I2),.LDL(@I3),.CI(@I4));", 5,3, "SYNCNT");
+        //RegisterFunction($"MUX4 @N_inst (.Q(@O0),.A(@I0),.B(@I1),.D_0(@I2),.D_1(@I3),.D_2(@I4),.D_3(@I5));", 6,1, "MUX4");
+        //RegisterFunction($"LFUBIT @N_inst (.DOUT(@O0),.SRCD(@I0),.DSTD(@I1),.LFUC_0(@I2),.LFUC_1(@I3),.LFUC_2(@I4),.LFUC_3(@I5));", 6,1, "LFUBIT");
+        //RegisterFunction($"LSCNTEL @N_inst (.Q(@O0),.QL(@O1),.CO(@O2),.D(@I0),.LD(@I1),.LDL(@I2),.CLK(@I3),.CI(@I4),.RSTL(@I5));", 6,3, "LSCNTEL");
 
         // Could be packed to make more readable e.g. .A({A_3,A_2,A_1,A_0})
         RegisterFunction($@"FA4C @N_inst (.CO(@O0),.SUM_3(@O1),.SUM_2(@O2),.SUM_1(@O3),.SUM_0(@O4),.CI(@I0),.A_3(@I1),.A_2(@I2),.A_1(@I3),.A_0(@I4),.B_3(@I5),.B_2(@I6),.B_1(@I7),.B_0(@I8));", 9,5, "FA4C");
@@ -131,7 +174,7 @@ class Module
         }
     }
 
-    private static string TranslateModule(Code code, Module module)
+    private string TranslateModule(Code code, Module module)
     {
         // Translation would be simple here except for the caveat of modules with bidirectional pins
 
@@ -150,17 +193,54 @@ class Module
         {
             Token i = code.inputs[i1];
 
-            b.Append($".{module.inputs[i1].getValue()}({i.getValue()}),");
+            if (module.InputIsBidirectional(module.inputs[i1]))
+            {
+                if (InputIsBidirectional(i))
+                {
+                    b.Append($".in{module.inputs[i1].getValue()}(in{i.getValue()}),");
+                }
+                else
+                {
+                    b.Append($".in{module.inputs[i1].getValue()}({i.getValue()}),");
+                }
+            }
+            else
+            {
+                if (InputIsBidirectional(i))
+                {
+                    b.Append($".{module.inputs[i1].getValue()}(in{i.getValue()}),");
+                }
+                else
+                {
+                    b.Append($".{module.inputs[i1].getValue()}({i.getValue()}),");
+                }
+            }
         }
         for (int o1 = 0; o1 < code.outputs.Count; o1++)
         {
             Token o = code.outputs[o1];
 
-            if (module.outputIsBi[o1]>=0)
+            if (module.OutputIsBidirectional(module.outputs[o1], out _))
             {
-                if (code.inputs[module.outputIsBi[o1]].getValue() != code.outputs[o1].getValue())
+                if (OutputIsBidirectional(o,out var idx))
                 {
-                    throw new ParseException(code.instanceName.getLine(), "bidirectional pin with different input than output!");
+                    // some modules don't have inputs for bidirectional outputs, these are marked with NO_INPUT_PIN
+                    if (module.outputIsBi[o1]!=NO_INPUT_PIN)
+                    {
+                        if (code.inputs[module.outputIsBi[o1]].getValue() != code.outputs[o1].getValue())
+                        {
+                            throw new ParseException(code.instanceName.getLine(), "bidirectional pin with different input than output!");
+                        }
+                    }
+                    b.Append($".out{module.outputs[o1].getValue()}(drv{tristateOutputUse[idx]}_out{o.getValue()}),");
+                    b.Append($".en{module.outputs[o1].getValue()}(drv{tristateOutputUse[idx]}_en{o.getValue()})");
+                    tristateOutputUse[idx]++;
+                    if (o1 != code.outputs.Count - 1)
+                        b.Append(",");
+                }
+                else
+                {
+                    throw new NotImplementedException($"ERMM..");
                 }
             }
             else
@@ -171,13 +251,12 @@ class Module
             }
         }
 
-
         b.Append(");");
 
         return b.ToString();
     }
 
-    private static string TranslateFunction(Code code, Function func)
+    private string TranslateFunction(Code code, Function func)
     {
         if (code.inputs.Count != func.numInputs)
             throw new ParseException(code.instanceName.getLine(), $"Wrong Number Inputs for {code.functionName.getValue()}!");
@@ -219,6 +298,13 @@ class Module
                         special = 0;
                         continue;
                     }
+                    if (s == 'T')
+                    {
+                        special = 4;
+                        value = 0;
+                        continue;
+                    }
+
                     throw new NotImplementedException($"Unhandled special");
                 case 2:
                 case 3:
@@ -230,9 +316,101 @@ class Module
                     else
                     {
                         if (special == 2)
-                            b.Append($"{code.inputs[value].getValue()}");
+                        {
+                            if (InputIsBidirectional(code.inputs[value]))
+                            {
+                                b.Append($"in{code.inputs[value].getValue()}");
+                            }
+                            else
+                            {
+                                b.Append($"{code.inputs[value].getValue()}");
+                            }
+                        }
                         else if (special == 3)
-                            b.Append($"{code.outputs[value].getValue()}");
+                        {
+                            if (OutputIsBidirectional(code.outputs[value], out _))
+                            {
+                                // Would need to assign to out and en , but this should be a tristate operation
+                                throw new NotImplementedException($"Assign to bidirectional output via non tristate driver");
+                                //b.Append($"{code.outputs[value].getValue()}");
+                            }
+                            else
+                            {
+                                b.Append($"{code.outputs[value].getValue()}");
+                            }
+                        }
+                        else
+                            throw new NotImplementedException($"Unexpected special");
+                        b.Append(s);
+                        special = 0;
+                    }
+                    continue;
+                case 4:
+                    if (s == 'O')
+                    {
+                        special = 5;
+                    }
+                    else if (s == 'E')
+                    {
+                        special = 6;
+                    }
+                    else if (s == '+')
+                    {
+                        special = 7;
+                    }
+                    else
+                        throw new NotImplementedException($"Unexpected special");
+                    value=0;
+                    continue;
+                case 5:
+                case 6:
+                case 7:
+                    if (s >= '0' && s <= '9')
+                    {
+                        value = value * 10;
+                        value += s - '0';
+                    }
+                    else
+                    {
+                        if (special == 5)
+                        {
+                            if (OutputIsBidirectional(code.outputs[value], out var idx))
+                            {
+                                b.Append($"drv{tristateOutputUse[idx]}_out{code.outputs[value].getValue()}");
+                            }
+                            else
+                            {
+                                // Would need to assign to out and en , but this should be a tristate operation
+                                throw new NotImplementedException($"Assign to non bidirectional output is unexpected!");
+                                //b.Append($"{code.outputs[value].getValue()}");
+                            }
+                        }
+                        else if (special == 6)
+                        {
+                            if (OutputIsBidirectional(code.outputs[value], out var idx))
+                            {
+                                b.Append($"drv{tristateOutputUse[idx]}_en{code.outputs[value].getValue()}");
+                            }
+                            else
+                            {
+                                // Would need to assign to out and en , but this should be a tristate operation
+                                throw new NotImplementedException($"Assign to non bidirectional enable is unexpected!");
+                                //b.Append($"{code.outputs[value].getValue()}");
+                            }
+                        }
+                        else if (special == 7)
+                        {
+                            if (OutputIsBidirectional(code.outputs[value], out var idx))
+                            {
+                                tristateOutputUse[idx]++;
+                            }
+                            else
+                            {
+                                // Would need to assign to out and en , but this should be a tristate operation
+                                throw new NotImplementedException($"Assign to non bidirectional enable is unexpected!");
+                                //b.Append($"{code.outputs[value].getValue()}");
+                            }
+                        }
                         else
                             throw new NotImplementedException($"Unexpected special");
                         b.Append(s);
@@ -267,10 +445,16 @@ class Module
 
     HashSet<int> linesThatNeedCommenting;
 
-    private enum State
+    private enum FileState
     {
         ExpectingCompile,
         ExpectingDirectory,
+        ExpectingModuleOrEndCompile,
+        ExpectingEnd
+    }
+    
+    private enum ModuleState
+    {
         ExpectingModule,
         ExpectingInputs,
         ExpectingOutputs,
@@ -287,42 +471,127 @@ class Module
         }
     }
 
-    public void Parse(Tokenizer tokenizer)
+    private bool InputIsBidirectional(Token token)
     {
-        // For now we only parse the FIRST module
+        for (int i = 0; i < inputs.Count; i++)
+        {
+            Token s = inputs[i];
+
+            if (s.getValue() == token.getValue())
+            {
+                return inputIsBi[i]>=0;
+            }
+        }
+        return false;
+    }
+    private bool OutputIsBidirectional(Token token, out int idx)
+    {
+        idx=0;
+        for (int i = 0; i < outputs.Count; i++)
+        {
+            Token s = outputs[i];
+
+            if (s.getValue() == token.getValue())
+            {
+                idx = i;
+                return outputIsBi[i]>=0;
+            }
+        }
+        return false;
+    }
+
+    public static List<Module> ParseFile(string filepath)
+    {
+        Tokenizer tokenizer = new Tokenizer();
+        try 
+        {
+            using (var input = new StreamReader(filepath))
+            {
+                tokenizer.tokenize(input);
+            }
+        } 
+        catch (Exception ex) 
+        {
+            Console.WriteLine(ex.StackTrace);
+        }
+
+        var modules = new List<Module>();
+
         tokenizer.reset();
 
-        var state = State.ExpectingCompile;
-        linesThatNeedCommenting=new HashSet<int>();
+        var state = FileState.ExpectingCompile;
+
+        var module = new Module(filepath);
+        
+        while (!tokenizer.matchTokens(TokenType.END, TokenType.SEMICOLON))
+        {
+            switch (state)
+            {
+                case FileState.ExpectingCompile:
+                    if (!tokenizer.matchTokens(TokenType.COMPILE,TokenType.SEMICOLON))
+                        throw new ParseException(tokenizer.nextToken().getLine(), "Expected COMPILE;");
+                    module.MarkAsCodeLine(tokenizer,2);
+                    tokenizer.consumeToken(2);
+                    state=FileState.ExpectingDirectory;
+                    break;
+                case FileState.ExpectingDirectory:
+                    if (!tokenizer.matchTokens(TokenType.DIRECTORY,TokenType.MASTER,TokenType.SEMICOLON))
+                        throw new ParseException(tokenizer.nextToken().getLine(), "Expected DIRECTORY MASTER;");
+                    module.MarkAsCodeLine(tokenizer,3);
+                    tokenizer.consumeToken(3);
+                    state=FileState.ExpectingModuleOrEndCompile;
+                    break;
+                case FileState.ExpectingModuleOrEndCompile:
+                    if (tokenizer.matchTokens(TokenType.MODULE,TokenType.IDENTIFIER,TokenType.SEMICOLON))
+                    {
+                        module.Parse(tokenizer);
+                        if (!excludeModules.Contains(module.name.getValue()))
+                        {
+                            modules.Add(module);
+                        }
+                        module = new Module(filepath);
+                        module.SetFirstLine(tokenizer.nextToken().getLine());
+                    }
+                    else if (tokenizer.matchTokens(TokenType.END, TokenType.COMPILE, TokenType.SEMICOLON))
+                    {
+                        module.MarkAsCodeLine(tokenizer,3);
+                        tokenizer.consumeToken(3);
+                        state=FileState.ExpectingEnd;
+                    }
+                    else
+                    {
+                        throw new ParseException(tokenizer.nextToken().getLine(), "Expected MODULE <name>; or END COMPILE;");
+                    }
+                    break;
+                case FileState.ExpectingEnd:
+                    break;
+            }
+        }
+
+        module.MarkAsCodeLine(tokenizer,3);
+        tokenizer.consumeToken(3);
+
+        return modules;
+    }
+
+    public void Parse(Tokenizer tokenizer)
+    {
+        var state = ModuleState.ExpectingModule;
         codeLines=new List<Code>();
         
         while (!tokenizer.matchTokens(TokenType.END, TokenType.MODULE, TokenType.SEMICOLON))
         {
             switch (state)
             {
-                case State.ExpectingCompile:
-                    if (!tokenizer.matchTokens(TokenType.COMPILE,TokenType.SEMICOLON))
-                        throw new ParseException(tokenizer.nextToken().getLine(), "Expected COMPILE;");
-                    MarkAsCodeLine(tokenizer,2);
-                    tokenizer.consumeToken(2);
-                    state=State.ExpectingDirectory;
-                    break;
-                case State.ExpectingDirectory:
-                    if (!tokenizer.matchTokens(TokenType.DIRECTORY,TokenType.MASTER,TokenType.SEMICOLON))
-                        throw new ParseException(tokenizer.nextToken().getLine(), "Expected DIRECTORY MASTER;");
-                    MarkAsCodeLine(tokenizer,3);
-                    tokenizer.consumeToken(3);
-                    state=State.ExpectingModule;
-                    break;
-                case State.ExpectingModule:
+                case ModuleState.ExpectingModule:
                     if (!tokenizer.matchTokens(TokenType.MODULE,TokenType.IDENTIFIER,TokenType.SEMICOLON))
                         throw new ParseException(tokenizer.nextToken().getLine(), "Expected MODULE <name>;");
                     this.name = tokenizer.nextToken(1);
                     MarkAsCodeLine(tokenizer,3);
                     tokenizer.consumeToken(3);
-                    state=State.ExpectingInputs;
+                    state=ModuleState.ExpectingInputs;
                     break;
-                case State.ExpectingInputs:
+                case ModuleState.ExpectingInputs:
                     if (!tokenizer.matchTokens(TokenType.INPUTS,TokenType.IDENTIFIER))
                         throw new ParseException(tokenizer.nextToken().getLine(), "Expected INPUTS <name>[,<name>]*;");
                     inputs = new List<Token>();
@@ -339,9 +608,9 @@ class Module
                         throw new ParseException(tokenizer.nextToken().getLine(), "Expected INPUTS <name>[,<name>]*;");
                     MarkAsCodeLine(tokenizer,1);
                     tokenizer.consumeToken(1);
-                    state=State.ExpectingOutputs;
+                    state=ModuleState.ExpectingOutputs;
                     break;
-                case State.ExpectingOutputs:
+                case ModuleState.ExpectingOutputs:
                     if (!tokenizer.matchTokens(TokenType.OUTPUTS,TokenType.IDENTIFIER))
                         throw new ParseException(tokenizer.nextToken().getLine(), "Expected OUTPUTS <name>[,<name>]*;");
                     outputs = new List<Token>();
@@ -358,24 +627,24 @@ class Module
                         throw new ParseException(tokenizer.nextToken().getLine(), "Expected OUTPUTS <name>[,<name>]*;");
                     MarkAsCodeLine(tokenizer,1);
                     tokenizer.consumeToken(1);
-                    state=State.ExpectingLevel;
+                    state=ModuleState.ExpectingLevel;
                     break;
-                case State.ExpectingLevel:
+                case ModuleState.ExpectingLevel:
                     if (!tokenizer.matchTokens(TokenType.LEVEL,TokenType.FUNCTION,TokenType.SEMICOLON))
                         throw new ParseException(tokenizer.nextToken().getLine(), "Expected LEVEL FUNCTION;");
                     MarkAsCodeLine(tokenizer,3);
                     tokenizer.consumeToken(3);
-                    state=State.ExpectingDefine;
+                    state=ModuleState.ExpectingDefine;
                     break;
-                case State.ExpectingDefine:
+                case ModuleState.ExpectingDefine:
                     if (!tokenizer.matchTokens(TokenType.DEFINE))
                         throw new ParseException(tokenizer.nextToken().getLine(), "Expected DEFINE");
                     define=tokenizer.nextToken();
                     MarkAsCodeLine(tokenizer,1);
                     tokenizer.consumeToken(1);
-                    state=State.ExpectingCode;
+                    state=ModuleState.ExpectingCode;
                     break;
-                case State.ExpectingCode:
+                case ModuleState.ExpectingCode:
                     if (!tokenizer.matchTokens(TokenType.IDENTIFIER, TokenType.LPAREN, TokenType.IDENTIFIER))
                         throw new ParseException(tokenizer.nextToken().getLine(), "Expected <instance>(<output>[,<output>]*) = <function>(<input>[,<input>]*);");
                     var code = new Code();
@@ -397,7 +666,7 @@ class Module
                     code.inputs.Add(tokenizer.nextToken(4));
                     MarkAsCodeLine(tokenizer,5);
                     tokenizer.consumeToken(5);
-                    while (tokenizer.matchTokens(TokenType.COMMA, TokenType.IDENTIFIER))
+                    while (tokenizer.matchTokens(TokenType.COMMA, TokenType.IDENTIFIER) || tokenizer.matchTokens(TokenType.COMMA, TokenType.NUMBER))
                     {
                         code.inputs.Add(tokenizer.nextToken(1));
                         MarkAsCodeLine(tokenizer,2);
@@ -408,7 +677,7 @@ class Module
                     MarkAsCodeLine(tokenizer,2);
                     tokenizer.consumeToken(2);
                     codeLines.Add(code);
-                    state=State.ExpectingCode;
+                    state=ModuleState.ExpectingCode;
                     break;
             }
         }
@@ -421,7 +690,34 @@ class Module
         RegisterFunctions();
 
         PassMakeBidirectional();
+        PassPickupBidirectionalOutputOnly();
         PassConstructWireList();
+        PassConstructOutputTristateMuxWires();
+    }
+
+    const int NO_INPUT_PIN=99999999;
+
+    private void PassPickupBidirectionalOutputOnly()
+    {
+        // The dsp is full of modules that produce tristate outputs without definining the inputs...
+        //so for now, we also convert outputs to bidirectional if they are driven by a bidirectional driver
+        foreach (var c in codeLines)
+        {
+            if (bidirectionalDriver.Contains(c.functionName.getValue()))
+            {
+                foreach (var co in c.outputs)
+                {
+                    for (int i = 0; i < outputs.Count; i++)
+                    {
+                        Token o = outputs[i];
+                        if (o.getValue() == co.getValue())
+                        {
+                            outputIsBi[i] = NO_INPUT_PIN;    // no input to connect to
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private void PassMakeBidirectional()
@@ -488,6 +784,38 @@ class Module
         }
     }
 
+    int[] tristateOutputUsages;
+    int[] tristateOutputUse;
+
+    private void PassConstructOutputTristateMuxWires()
+    {
+        tristateOutputUsages = new int [outputs.Count];
+        tristateOutputUse = new int [outputs.Count];
+        foreach (var line in codeLines)
+        {
+            foreach (var o in line.outputs)
+            {
+                if (OutputIsBidirectional(o, out var idx))
+                {
+                    tristateOutputUsages[idx]++;
+                }
+            }
+        }
+
+        // Reloop through outputs and construct wires for all tristates
+        foreach (var o in outputs)
+        {
+            if (OutputIsBidirectional(o, out var idx))
+            {
+                for (int a = 0; a < tristateOutputUsages[idx]; a++)
+                {
+                    wires.Add(new Token(o.getType(), o.getLine(), $"drv{a}_out{o.getValue()}"));
+                    wires.Add(new Token(o.getType(), o.getLine(), $"drv{a}_en{o.getValue()}"));
+                }
+            }
+        }
+    }
+
     Dictionary<int, string> originalFileLines;
     int currentLine;
 
@@ -509,17 +837,27 @@ class Module
 
     const int COMMENTPAD=80;
 
+    TextWriter output=Console.Out;
+
+    public void SetFirstLine(int linenum)
+    {
+        firstLine=linenum;
+    }
+
     private void DumpLinesUpto(int line)
     {
         while (currentLine<line)
         {
-            if (linesThatNeedCommenting.Contains(currentLine))
+            if (currentLine>=firstLine)
             {
-                Console.WriteLine($"{' ',COMMENTPAD}//[{currentLine:00000}] {originalFileLines[currentLine]}");
-            }
-            else
-            {
-                Console.WriteLine(originalFileLines[currentLine]);
+                if (linesThatNeedCommenting.Contains(currentLine))
+                {
+                    output.WriteLine($"{' ',COMMENTPAD}{FetchTokenLine(currentLine)}");
+                }
+                else
+                {
+                    output.WriteLine(originalFileLines[currentLine]);
+                }
             }
             currentLine++;
         }
@@ -527,9 +865,13 @@ class Module
             currentLine++;
     }
 
+    private string FetchTokenLine(int lineNum)
+    {
+        return $"//[{Path.GetFileName(originalFilePath)}:{lineNum:00000}] {originalFileLines[lineNum]}";
+    }
     private string FetchTokenLine(Token token)
     {
-        return $"//[{token.getLine():00000}] {originalFileLines[token.getLine()]}";
+        return FetchTokenLine(token.getLine());
     }
 
     public void DumpStringWithOriginalLine(string line, Token root)
@@ -542,11 +884,25 @@ class Module
             s.Append(' ', COMMENTPAD-line.Length);
         }
         s.Append(FetchTokenLine(root));
-        Console.WriteLine(s.ToString());
+        output.WriteLine(s.ToString());
+    }
+    
+    public void DumpString(string line)
+    {
+        output.WriteLine(line);
     }
 
-    public void Dump(string originalFilePath)
+    public void Dump(string outputPath=null)
     {
+        if (outputPath!=null)
+        {
+            output = new StreamWriter(outputPath);
+        }
+        else
+        {
+            output = Console.Out;
+        }
+
         CreateOriginalFileLinesDictionary(originalFilePath);
 
         int moduleLine = name.getLine();
@@ -560,7 +916,7 @@ class Module
         {
             if (inputIsBi[a]>=0)
             {
-                DumpStringWithOriginalLine($"    inout    {inputs[a].getValue()},", inputs[a]);
+                DumpStringWithOriginalLine($"    input    in{inputs[a].getValue()},", inputs[a]);
             }
             else
             {
@@ -572,7 +928,7 @@ class Module
         {
             if (outputIsBi[a]>=0)
             {
-                DumpStringWithOriginalLine($"//    output    {outputs[a].getValue()},", outputs[a]);
+                DumpStringWithOriginalLine($"    output    out{outputs[a].getValue()}, en{outputs[a].getValue()},", outputs[a]);
             }
             else
             {
@@ -581,7 +937,7 @@ class Module
         }
         if (outputIsBi[outputs.Count-1]>=0)
         {
-            DumpStringWithOriginalLine($"//    output    {outputs[outputs.Count-1].getValue()}", outputs[outputs.Count-1]);
+            DumpStringWithOriginalLine($"    output    out{outputs[outputs.Count-1].getValue()}, en{outputs[outputs.Count-1].getValue()}", outputs[outputs.Count-1]);
         }
         else
         {
@@ -604,6 +960,61 @@ class Module
         }
 
         DumpLinesUpto(end.getLine());
+
+
+        for (a=0;a<tristateOutputUse.Length;a++)
+        {
+            if (tristateOutputUsages[a]!=tristateOutputUse[a])
+            {
+                throw new NotImplementedException($"Something went wrong and we haven't written the expected number of drivers");
+            }
+        }
+
+        // The last thing we do in the conversion is to glue all the tristates together into the output drivers
+        for (a=0;a<outputs.Count;a++)
+        {
+            if (outputIsBi[a]>=0)
+            {
+                // We need to glue all the signals together that make up this output and enable pair
+                // Output signal
+                var s = new StringBuilder();
+                s.Append($"assign out{outputs[a].getValue()} = ");
+                for (int c=0;c<tristateOutputUsages[a];c++)
+                {
+                    s.Append($"(drv{c}_out{outputs[a].getValue()} & drv{c}_en{outputs[a].getValue()})");
+                    if (c == tristateOutputUsages[a]-1)
+                    {
+                        s.Append(";");
+                    }
+                    else
+                    {
+                        s.Append(" | ");
+                    }
+                }
+                DumpString(s.ToString());
+                // Enable signal
+                s = new StringBuilder();
+                s.Append($"assign en{outputs[a].getValue()} = ");
+                for (int c=0;c<tristateOutputUsages[a];c++)
+                {
+                    s.Append($"drv{c}_en{outputs[a].getValue()}");
+                    if (c == tristateOutputUsages[a]-1)
+                    {
+                        s.Append(";");
+                    }
+                    else
+                    {
+                        s.Append(" | ");
+                    }
+                }
+                DumpString(s.ToString());
+            }
+        }
+
         DumpStringWithOriginalLine("endmodule", end);
+
+        output.Flush();
     }
+
+    public string FileName => $"m_{name.getValue()}.sv";
 }

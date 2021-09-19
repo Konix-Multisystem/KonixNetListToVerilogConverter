@@ -1,109 +1,95 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace K2V
 {
     class Program
     {
-        static void Validate()
-        {
+        static readonly string baseInputFolder = "/home/snax/fpga/OLDDIRS/SS1NET/";
+        static readonly string baseOutputFolder = "/home/snax/fpga/autoGen/";
 
-        }
+        // For the morning, lets convert counters.net (multiple module, we should form a set of standard includes, LEGO, COUNTERS, MACROS, QMACROS)
+
 
         // DSP
+        static string[] dspBaseModules={
+            "PC.NET"
+        };
 
         // VIDEO HARDWARE
-        static string[] videoModules={
-            "/home/snax/fpga/OLDDIRS/SS1NET/CLOCK.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/IODEC.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/STAT.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/MEM.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/INT.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/VCNT.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/HCNT.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/BM.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/VTIM.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/VID.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/PIX.NET"
+        static string[] videoBaseModules={
+            "CLOCK.NET",
+            "IODEC.NET",
+            "STAT.NET",
+            "MEM.NET",
+            "INT.NET",
+            "VCNT.NET",
+            "HCNT.NET",
+            "BM.NET",
+            "VTIM.NET",
+            "PIX.NET"
         };
 
         // BLITTER
         static string[] blitterDataModules={
-            "/home/snax/fpga/OLDDIRS/SS1NET/SRCDATA.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/DSTDATA.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/PATDATA.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/COMP.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/LFU.NET"
+            "SRCDATA.NET",
+            "DSTDATA.NET",
+            "PATDATA.NET",
+            "COMP.NET",
+            "LFU.NET"
         };
         static string[] blitterStateModules={
-            "/home/snax/fpga/OLDDIRS/SS1NET/STOUTER.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/STCMD.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/STPARAM.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/STINNER.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/STMEM.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/CMDREGS.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/INNERCNT.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/OUTERCNT.NET"
+            "STOUTER.NET",
+            "STCMD.NET",
+            "STPARAM.NET",
+            "STINNER.NET",
+            "STMEM.NET",
+            "CMDREGS.NET",
+            "INNERCNT.NET",
+            "OUTERCNT.NET"
         };
         static string[] blitterAddrModules={
-            "/home/snax/fpga/OLDDIRS/SS1NET/DSTAREG.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/SRCAREG.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/PCAREG.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/ADDAMUX.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/STEPREG.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/ADDBSEL.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/ADDRADD.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/ADDROUT.NET"
+            "DSTAREG.NET",
+            "SRCAREG.NET",
+            "PCAREG.NET",
+            "ADDAMUX.NET",
+            "STEPREG.NET",
+            "ADDBSEL.NET",
+            "ADDRADD.NET",
+            "ADDROUT.NET"
         };
 
         static string[] blitterModules={
-            "/home/snax/fpga/OLDDIRS/SS1NET/DATA.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/ADDR.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/STATE.NET",
-            "/home/snax/fpga/OLDDIRS/SS1NET/BUSCON.NET"
+            "DATA.NET",
+            "ADDR.NET",
+            "STATE.NET",
+            "BUSCON.NET"
         };
 
-        static void DoModule(string path)
-        {
-            Tokenizer tokenizer = new Tokenizer();
-            try 
-            {
-                using (var input = new StreamReader(path))
-                {
-                    tokenizer.tokenize(input);
-                }
-            } 
-            catch (Exception ex) 
-            {
-                Console.WriteLine(ex.StackTrace);
-            }
+        static string[][] leafModules={
+            videoBaseModules,
+            blitterDataModules,
+            blitterStateModules,
+            blitterAddrModules,
+            dspBaseModules
+        };
 
-            var m = new Module();
-            m.Parse(tokenizer);
-            m.Dump(path);
-        }
+        static string[] videoModules = {
+            "VID.NET"
+        };
 
-        static void DoInputModule()
-        {
-            string path = videoModules[0];
+        static string [][] layer1Modules={
+            videoModules,
+            blitterModules,
+        };
+        static string [] blitterMain={
+            "BLIT.NET"
+        };
 
-            Tokenizer tokenizer = new Tokenizer();
-            try 
-            {
-                using (var input = new StreamReader(path))
-                {
-                    tokenizer.tokenize(input);
-                }
-            } 
-            catch (Exception ex) 
-            {
-                Console.WriteLine(ex.StackTrace);
-            }
-
-            var m = new Module();
-            m.Parse(tokenizer);
-            m.Dump(path);
-        }
+        static string [][] layer2Modules={
+            blitterMain
+        };
 
         static Tokenizer Tokenise(string path)
         {
@@ -122,118 +108,108 @@ namespace K2V
             return tokenizer;
         }
 
-        static void DoVideo()
+        static string[] GetAllModulesFromMultiArray(string[][] array)
         {
-            Module [] deps = new Module[videoModules.Length];
-            var m = new Module();
-            for (int i = 0; i < videoModules.Length; i++)
+            var newlist = new List<string>();
+            foreach(var l in array)
             {
-                string s = videoModules[i];
-
-                deps[i] = new Module();
-                deps[i].Parse(Tokenise(s));
-                m.RegisterModule(deps[i], Path.GetFileNameWithoutExtension(s));
+                foreach (var m in l)
+                {
+                    newlist.Add(Path.Combine(baseInputFolder,m));
+                }
             }
 
-            string path = "/home/snax/fpga/OLDDIRS/SS1NET/VID.NET";
-
-            var tokenizer = Tokenise(path);
-            m.Parse(tokenizer);
-            m.Dump(path);
-
+            return newlist.ToArray();
         }
 
-        static void DoBlitterDataPath()
+        static string[] GetAllLeafModules()
         {
-            Module [] deps = new Module[blitterDataModules.Length];
-            var m = new Module();
-            for (int i = 0; i < blitterDataModules.Length; i++)
-            {
-                string s = blitterDataModules[i];
+            return GetAllModulesFromMultiArray(leafModules);
+        }
 
-                deps[i] = new Module();
-                deps[i].Parse(Tokenise(s));
-                m.RegisterModule(deps[i], Path.GetFileNameWithoutExtension(s));
+        static string[] GetAllLayer1Modules()
+        {
+            return GetAllModulesFromMultiArray(layer1Modules);
+        }
+
+        static string[] GetAllLayer2Modules()
+        {
+            return GetAllModulesFromMultiArray(layer2Modules);
+        }
+
+        static void DoConvertModules(string[] children, string[] parents)
+        {
+            var includes = FetchIncludes();
+
+            List<Module> deps = new List<Module>();
+            for (int i = 0; i < children.Length; i++)
+            {
+                string s = children[i];
+
+                foreach (var c in Module.ParseFile(s))
+                {
+                    c.RegisterModules(includes);
+                    deps.Add(c);
+                }
             }
 
-            string path = "/home/snax/fpga/OLDDIRS/SS1NET/DATA.NET";
-
-            var tokenizer = Tokenise(path);
-            m.Parse(tokenizer);
-            m.Dump(path);
-
-        }
-        
-        static void DoBlitterStatePath()
-        {
-            Module [] deps = new Module[blitterStateModules.Length];
-            var m = new Module();
-            for (int i = 0; i < blitterStateModules.Length; i++)
+            foreach (var m in parents)
             {
-                string s = blitterStateModules[i];
-
-                deps[i] = new Module();
-                deps[i].Parse(Tokenise(s));
-                m.RegisterModule(deps[i], Path.GetFileNameWithoutExtension(s));
+                var modules = Module.ParseFile(m);
+                foreach (var mod in modules)
+                {
+                    mod.RegisterModules(deps);
+                    mod.RegisterModules(includes);
+                    mod.RegisterModules(modules);
+                    mod.Dump(Path.Combine(baseOutputFolder, mod.FileName));
+                }
             }
-
-            string path = "/home/snax/fpga/OLDDIRS/SS1NET/STATE.NET";
-
-            var tokenizer = Tokenise(path);
-            m.Parse(tokenizer);
-            m.Dump(path);
         }
 
-        static void DoBlitterAddrPath()
+        static void DoLeafModules()
         {
-            Module [] deps = new Module[blitterAddrModules.Length];
-            var m = new Module();
-            for (int i = 0; i < blitterAddrModules.Length; i++)
-            {
-                string s = blitterAddrModules[i];
-
-                deps[i] = new Module();
-                deps[i].Parse(Tokenise(s));
-                m.RegisterModule(deps[i], Path.GetFileNameWithoutExtension(s));
-            }
-
-            string path = "/home/snax/fpga/OLDDIRS/SS1NET/ADDR.NET";
-
-            var tokenizer = Tokenise(path);
-            m.Parse(tokenizer);
-            m.Dump(path);
+            DoConvertModules(new string[] { }, GetAllLeafModules());
         }
 
-        static void DoBlitterPath()
+        static void DoLayer1Modules()
         {
-            Module [] deps = new Module[blitterModules.Length];
-            var m = new Module();
-            for (int i = 0; i < blitterModules.Length; i++)
-            {
-                string s = blitterModules[i];
-
-                deps[i] = new Module();
-                deps[i].Parse(Tokenise(s));
-                m.RegisterModule(deps[i], Path.GetFileNameWithoutExtension(s));
-            }
-
-            string path = "/home/snax/fpga/OLDDIRS/SS1NET/BLIT.NET";
-
-            var tokenizer = Tokenise(path);
-            m.Parse(tokenizer);
-            m.Dump(path);
+            DoConvertModules(GetAllLeafModules(), GetAllLayer1Modules());
         }
+
+        static void DoLayer2Modules()
+        {
+            DoConvertModules(GetAllLayer1Modules(), GetAllLayer2Modules());
+        }
+
+        static List<Module> FetchIncludes()
+        {
+            var modules = Module.ParseFile(Path.Combine(baseInputFolder, "COUNTERS.NET"));
+            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "LEGO.NET")));
+            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "MACROS.NET")));
+            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "QMACROS.NET")));
+            foreach (var m in modules)
+            {
+                m.RegisterModules(modules);
+            }
+            return modules;
+        }
+
+        static void DoIncludes()
+        {
+            var modules = FetchIncludes();
+            foreach (var m in modules)
+            {
+                m.Dump(Path.Combine(baseOutputFolder, m.FileName));
+            }
+        }
+
         static void Main(string[] args)
         {
-            //DoInputModule();
-            //DoVideo();
+            DoIncludes();
 
-            DoModule("/home/snax/fpga/OLDDIRS/SS1NET/ADDAMUX.NET");
-
-            //DoBlitterDataPath();
-            //DoBlitterStatePath();
-            //DoBlitterAddrPath();
-            //DoBlitterPath();
+            DoLeafModules();
+            DoLayer1Modules();
+            DoLayer2Modules();
         }
     }
 }

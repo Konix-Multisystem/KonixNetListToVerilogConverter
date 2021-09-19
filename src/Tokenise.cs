@@ -7,7 +7,6 @@ public class Tokenizer
 {
 	private List<Token> tokens = new List<Token>();
 	private int position = 0;
-	private int _mark = 0;
 	
     public Tokenizer()
     {
@@ -28,36 +27,14 @@ public class Tokenizer
 		return nextToken(0);
 	}
 
-	public void consumeToken(int count) 
+	public void consumeToken(int count=1) 
     {
 		position += count;
-	}
-	public void consumeToken() 
-    {
-		consumeToken(1);
 	}
 	public void reset() 
     {
 		position = 0;
 	}
-	
-	public void mark() 
-    {
-		_mark = position;
-	}
-	public void rewind()
-    {
-		position = _mark;
-	}
-	
-	/*public void replaceToken( TokenType type ) {
-		Token oldToken = nextToken();
-		tokens.set(position, new Token(type, oldToken.getLine()));
-	}
-	public void insertToken( TokenType type ) {
-		Token nextToken = nextToken();
-		tokens.insertElementAt(new Token(type, nextToken.getLine()), position);
-	}*/
 	
 	public bool matchTokens(params TokenType[] args) 
     {
@@ -147,9 +124,6 @@ public class Tokenizer
 
 	private void tokenizeLine(int lineNo, string line) 
     {
-		// Language seems case-insensitive
-		//line = line.ToLowerInvariant();
-		
 		Regex pIdentifier = new Regex("^[a-zA-Z][a-zA-Z0-9\\\\_]*");
 		Regex pNumber = new Regex("^[0-9]+");
 		
@@ -196,6 +170,16 @@ public class Tokenizer
 					continue;
 				}
 			}
+
+			// Special cases
+			if (line.StartsWith("NC/1/"))
+			{
+				Token number = new Token(TokenType.NUMBER, lineNo, "1");
+				tokens.Add(number);
+				line = line.Substring("NC/1/".Length);
+				continue;
+			}
+
 			
 			// Identifiers
             var match = pIdentifier.Match(line);

@@ -5,7 +5,7 @@ public enum TokenType
 
 	ASSIGN, SEMICOLON, COMMA,
 	
-	LPAREN, RPAREN,     // ( )
+	LPAREN, RPAREN, 
 	
 	COMPILE,
 	DIRECTORY,
