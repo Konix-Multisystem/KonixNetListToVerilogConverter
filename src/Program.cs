@@ -18,7 +18,11 @@ namespace K2V
             "PWM.NET",
             "DMA.NET",
             "PRAM.NET",
-            "DRAM.NET"
+            "DRAM.NET",
+            "ADDRESS.NET",
+            "INSTRUCT.NET",
+            "ALU.NET",
+            "INTRUDE.NET"
         };
 
         // VIDEO HARDWARE
@@ -83,9 +87,14 @@ namespace K2V
             "VID.NET"
         };
 
+        static string[] dspModules = {
+            "DSP.NET"
+        };
+
         static string [][] layer1Modules={
             videoModules,
             blitterModules,
+            dspModules
         };
         static string [] blitterMain={
             "BLIT.NET"
