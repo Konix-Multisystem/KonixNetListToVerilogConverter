@@ -84,17 +84,17 @@ class Module
         RegisterFunction("assign @O0 = @I0 ^ @I1;", 2, 1, "EOA", "EOB");
         RegisterFunction("assign @O0 = ~(@I0 ^ @I1);", 2, 1, "ENA");
         RegisterFunction("assign @O0 = @I0 | @I1;", 2, 1, "OR2A", "OR2C");
-        RegisterFunction("assign @O0 = @I0 & @I1;", 2, 1, "AND2A", "AND2C");
+        RegisterFunction("assign @O0 = @I0 & @I1;", 2, 1, "AND2A", "AND2B", "AND2C");
         RegisterFunction("assign @O0 = ~(@I0 | @I1);", 2, 1, "NR2A", "NR2B", "NR2C");
         RegisterFunction("assign @O0 = ~(@I0 & @I1);", 2, 1, "ND2A", "ND2B", "ND2C");
-        RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2);", 3, 1, "NR3A", "NR3C");
+        RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2);", 3, 1, "NR3A", "NR3B", "NR3C");
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2);", 3, 1, "ND3A", "ND3B", "ND3C");
         RegisterFunction("assign @O0 = @I0 | @I1 | @I2;", 3, 1, "OR3A");
         RegisterFunction("assign @O0 = @I0 & @I1 & @I2;", 3, 1, "AND3A", "AND3C");
         RegisterFunction("assign @O0 = ~((@I0 & @I1)|(@I2 & @I3));", 4, 1, "AO2A", "AO2B", "AO2C");
         RegisterFunction("assign @O0 = ~(@I0 | @I1 | @I2 | @I3);", 4, 1, "NR4A", "NR4B", "NR4C");
         RegisterFunction("assign @O0 = ~(@I0 & @I1 & @I2 & @I3);", 4, 1, "ND4A", "ND4C");
-        RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3;", 4, 1, "AND4A");
+        RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3;", 4, 1, "AND4A", "AND4B");
         RegisterFunction("assign @O0 = ~(@I0 & ~(@I1 & @I2 & @I3 & @I4));", 5, 1, "N4AND");   //translated from MODULE in IODEC
         RegisterFunction("assign @O0 = @I0 | @I1 | @I2 | @I3 | @I4;", 5, 1, "OR5A");
         RegisterFunction("assign @O0 = @I0 & @I1 & @I2 & @I3 & @I4;", 5, 1, "AND5A", "AND5B");
@@ -755,6 +755,8 @@ class Module
         // Construct list of wires we need to declare
         wires = new List<Token>();
         var uniqueWire = new HashSet<string>();
+        uniqueWire.Add("1");
+        uniqueWire.Add("0");
         foreach (var i in inputs)
         {
             uniqueWire.Add(i.getValue());

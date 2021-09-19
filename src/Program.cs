@@ -14,7 +14,9 @@ namespace K2V
 
         // DSP
         static string[] dspBaseModules={
-            "PC.NET"
+            "PC.NET",
+            "PWM.NET",
+            "DMA.NET",
         };
 
         // VIDEO HARDWARE
