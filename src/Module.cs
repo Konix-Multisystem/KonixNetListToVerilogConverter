@@ -131,10 +131,10 @@ class Module
         //RegisterFunction($"ZTLATCH1 @N_inst (.QB(@O0),.D(@I1),.CLK(@I2),.ENL(@I3));", 4,1, "ZTLATCH1"); // TODO add verify that I0==O0
         
         // Ported to non tristate bus style
-        RegisterFunction("assign @TO0 = @I0; assign @TE0 = ~@I1;@T+0 ", 2, 1, "MACZINVB1");
+        RegisterFunction("assign @TO0 = ~@I0; assign @TE0 = ~@I1;@T+0 ", 2, 1, "MACZINVB1");
         RegisterFunction("assign @TO0 = @I0; assign @TE0 = @I1;@T+0 ", 2, 1, "BTS4A", "BTS4B", "BTS4C", "ZBUF1");         // 5 is inverting output,4 is normal?
         RegisterFunction("assign @TO0 = ~@I0; assign @TE0 = @I1;@T+0 ", 2, 1, "BTS5A", "BTS5B");         // 5 is inverting output,4 is normal?
-        RegisterFunction($"wire @N_@TO0,@N_@TO0L; LD1A @N_inst (.q(@N_@TO0),.qL(@N_@TO0L),.d(@I1),.en(@I2)); assign @TO0 = @I0; assign @TE0 = @I3;@T+0 ", 4,1, "ZTLATCH1");
+        RegisterFunction($"wire @N_@TO0,@N_@TO0L; LD1A @N_inst (.q(@N_@TO0),.qL(@N_@TO0L),.d(@I1),.en(@I2)); assign @TO0 = ~@I0; assign @TE0 = ~@I3;@T+0 ", 4,1, "ZTLATCH1");
 
         // Requires Module Implementations
         //RegisterFunction($"SR @N_inst (.Q(@O0),.QL(@O1),.S(@I0),.R(@I1));", 2,2, "SR");
