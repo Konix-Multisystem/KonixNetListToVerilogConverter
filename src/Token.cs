@@ -3,26 +3,15 @@ using System.Text;
 public class Token 
 {
 	private TokenType type;
-	public TokenType getType() {
-		return type;
-	}
+	public TokenType Type => type;
 	
-	private string value = null;
-	public string getValue() {
-		return value;
-	}
+	private string value;
+	public string Value => value;
 
 	private int line;
-	public int getLine() {
-		return line;
-	}
+	public int Line => line;
 	
-	public Token(TokenType type, int line) 
-    {
-        this.type = type;
-        this.line = line;
-	}
-	public Token(TokenType type, int line, string value) 
+	public Token(TokenType type, int line, string value=null) 
     {
 		this.type = type;
 		this.line = line;

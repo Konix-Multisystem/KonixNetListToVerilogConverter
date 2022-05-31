@@ -4,13 +4,12 @@ using System.IO;
 
 namespace K2V
 {
+
     class Program
     {
+        static Slipstream88 mods = default;
         static readonly string baseInputFolder = "/home/snax/fpga/OLDDIRS/SS1NET/";
         static readonly string baseOutputFolder = "/home/snax/fpga/autoGen/";
-
-        // For the morning, lets convert counters.net (multiple module, we should form a set of standard includes, LEGO, COUNTERS, MACROS, QMACROS)
-
 
         // DSP
         static string[] dspBaseModules={
@@ -159,7 +158,7 @@ namespace K2V
             {
                 string s = children[i];
 
-                foreach (var c in Module.ParseFile(s))
+                foreach (var c in Module.ParseFile(s,mods))
                 {
                     c.RegisterModules(includes);
                     deps.Add(c);
@@ -168,13 +167,13 @@ namespace K2V
 
             foreach (var m in parents)
             {
-                var modules = Module.ParseFile(m);
+                var modules = Module.ParseFile(m,mods);
                 foreach (var mod in modules)
                 {
                     mod.RegisterModules(deps);
                     mod.RegisterModules(includes);
                     mod.RegisterModules(modules);
-                    mod.Dump(Path.Combine(baseOutputFolder, mod.FileName));
+                    mod.Dump(Path.Combine(baseOutputFolder, mod.FileName),mods);
                 }
             }
         }
@@ -196,10 +195,10 @@ namespace K2V
 
         static List<Module> FetchIncludes()
         {
-            var modules = Module.ParseFile(Path.Combine(baseInputFolder, "COUNTERS.NET"));
-            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "LEGO.NET")));
-            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "MACROS.NET")));
-            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "QMACROS.NET")));
+            var modules = Module.ParseFile(Path.Combine(baseInputFolder, "COUNTERS.NET"),mods);
+            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "LEGO.NET"),mods));
+            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "MACROS.NET"),mods));
+            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "QMACROS.NET"),mods));
             foreach (var m in modules)
             {
                 m.RegisterModules(modules);
@@ -212,7 +211,7 @@ namespace K2V
             var modules = FetchIncludes();
             foreach (var m in modules)
             {
-                m.Dump(Path.Combine(baseOutputFolder, m.FileName));
+                m.Dump(Path.Combine(baseOutputFolder, m.FileName),mods);
             }
         }
 

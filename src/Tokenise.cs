@@ -12,7 +12,7 @@ public class Tokenizer
     {
     }
 
-	public Token nextToken(int offset) 
+	public Token nextToken(int offset=0) 
     {
 		int p = position + offset;
 		if ( (p >= 0) && (p < tokens.Count) ) 
@@ -22,15 +22,11 @@ public class Tokenizer
 		return new Token(TokenType.EOF, -1);
 	}
 
-	public Token nextToken() 
-    {
-		return nextToken(0);
-	}
-
 	public void consumeToken(int count=1) 
     {
 		position += count;
 	}
+
 	public void reset() 
     {
 		position = 0;
@@ -45,14 +41,13 @@ public class Tokenizer
     {
 		for(int k = 0; k < args.Length; k++) 
         {
-			if (!(args[k] == nextToken(offset + k).getType()))
+			if (!(args[k] == nextToken(offset + k).Type))
 				return false;
 		}
 		return true;
 	}
 
 	private bool inComment = false;
-	private bool inPreproc = false;
 	
 	public void tokenize(StreamReader input)
     {
@@ -60,7 +55,6 @@ public class Tokenizer
 		int lineNo = 0;
 		
 		inComment = false;
-		inPreproc = false;
 		
 		try 
         {
@@ -70,9 +64,9 @@ public class Tokenizer
 				tokenizeLine(lineNo, line);
 			}
 		} 
-        catch (Exception ex) 
+        catch (Exception) 
         {
-			throw ex;
+			throw;
 		} 
 	}
 
@@ -135,22 +129,6 @@ public class Tokenizer
 				line = line.Substring(1);
 				continue;
 			}
-			// Preprocessor directives, done the quick and dirty way
-			if (line.StartsWith("#if")) 
-            {
-				if (line.IndexOf("verilog") < 0) 
-                {
-					inPreproc = true;
-				}
-				return;
-			}
-			if (line.StartsWith("#endif")) 
-            {
-				inPreproc = false;
-				return;
-			}
-			if (inPreproc)
-				return;
 			
 			// Comments
 			if (line.StartsWith("/*") || line.StartsWith("(*") || inComment) 
