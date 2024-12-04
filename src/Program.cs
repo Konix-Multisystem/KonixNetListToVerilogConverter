@@ -7,12 +7,8 @@ namespace K2V
 
     class Program
     {
-        static Slipstream88 mods = default;
-        static readonly string baseInputFolder = "/home/snax/fpga/OLDDIRS/SS1NET/";
-        static readonly string baseOutputFolder = "/home/snax/fpga/autoGen/";
-
         // DSP
-        static string[] dspBaseModules={
+        static readonly string[] dspBaseModules={
             "PC.NET",
             "PWM.NET",
             "DMA.NET",
@@ -25,7 +21,7 @@ namespace K2V
         };
 
         // VIDEO HARDWARE
-        static string[] videoBaseModules={
+        static readonly string[] videoBaseModules={
             "CLOCK.NET",
             "IODEC.NET",
             "STAT.NET",
@@ -39,14 +35,14 @@ namespace K2V
         };
 
         // BLITTER
-        static string[] blitterDataModules={
+        static readonly string[] blitterDataModules={
             "SRCDATA.NET",
             "DSTDATA.NET",
             "PATDATA.NET",
             "COMP.NET",
             "LFU.NET"
         };
-        static string[] blitterStateModules={
+        static readonly string[] blitterStateModules={
             "STOUTER.NET",
             "STCMD.NET",
             "STPARAM.NET",
@@ -56,7 +52,7 @@ namespace K2V
             "INNERCNT.NET",
             "OUTERCNT.NET"
         };
-        static string[] blitterAddrModules={
+        static readonly string[] blitterAddrModules={
             "DSTAREG.NET",
             "SRCAREG.NET",
             "PCAREG.NET",
@@ -67,14 +63,14 @@ namespace K2V
             "ADDROUT.NET"
         };
 
-        static string[] blitterModules={
+        static readonly string[] blitterModules={
             "DATA.NET",
             "ADDR.NET",
             "STATE.NET",
             "BUSCON.NET"
         };
 
-        static string[][] leafModules={
+        static readonly string[][] leafModules={
             videoBaseModules,
             blitterDataModules,
             blitterStateModules,
@@ -82,45 +78,28 @@ namespace K2V
             dspBaseModules
         };
 
-        static string[] videoModules = {
+        static readonly string[] videoModules = {
             "VID.NET"
         };
 
-        static string[] dspModules = {
+        static readonly string[] dspModules = {
             "DSP.NET"
         };
 
-        static string [][] layer1Modules={
+        static readonly string [][] layer1Modules={
             videoModules,
             blitterModules,
             dspModules
         };
-        static string [] blitterMain={
+        static readonly string [] blitterMain={
             "BLIT.NET"
         };
 
-        static string [][] layer2Modules={
+        static readonly string [][] layer2Modules={
             blitterMain
         };
 
-        static Tokenizer Tokenise(string path)
-        {
-            Tokenizer tokenizer = new Tokenizer();
-            try 
-            {
-                using (var input = new StreamReader(path))
-                {
-                    tokenizer.tokenize(input);
-                }
-            } 
-            catch (Exception ex) 
-            {
-                Console.WriteLine(ex.StackTrace);
-            }
-            return tokenizer;
-        }
-
-        static string[] GetAllModulesFromMultiArray(string[][] array)
+        static string[] GetAllModulesFromMultiArray(string baseInputFolder, string[][] array)
         {
             var newlist = new List<string>();
             foreach(var l in array)
@@ -134,24 +113,24 @@ namespace K2V
             return newlist.ToArray();
         }
 
-        static string[] GetAllLeafModules()
+        static string[] GetAllLeafModules(string inputFolder)
         {
-            return GetAllModulesFromMultiArray(leafModules);
+            return GetAllModulesFromMultiArray(inputFolder, leafModules);
         }
 
-        static string[] GetAllLayer1Modules()
+        static string[] GetAllLayer1Modules(string inputFolder)
         {
-            return GetAllModulesFromMultiArray(layer1Modules);
+            return GetAllModulesFromMultiArray(inputFolder, layer1Modules);
         }
 
-        static string[] GetAllLayer2Modules()
+        static string[] GetAllLayer2Modules(string inputFolder)
         {
-            return GetAllModulesFromMultiArray(layer2Modules);
+            return GetAllModulesFromMultiArray(inputFolder, layer2Modules);
         }
 
-        static void DoConvertModules(string[] children, string[] parents)
+        static void DoConvertModules(string inputFolder, string outputFolder, string[] children, string[] parents, IModification mods)
         {
-            var includes = FetchIncludes();
+            var includes = FetchIncludes(inputFolder, mods);
 
             List<Module> deps = new List<Module>();
             for (int i = 0; i < children.Length; i++)
@@ -173,32 +152,32 @@ namespace K2V
                     mod.RegisterModules(deps);
                     mod.RegisterModules(includes);
                     mod.RegisterModules(modules);
-                    mod.Dump(Path.Combine(baseOutputFolder, mod.FileName),mods);
+                    mod.Dump(Path.Combine(outputFolder, mod.FileName),mods);
                 }
             }
         }
 
-        static void DoLeafModules()
+        static void DoLeafModules(string inputFolder, string outputFolder, IModification mods)
         {
-            DoConvertModules(new string[] { }, GetAllLeafModules());
+            DoConvertModules(inputFolder, outputFolder, new string[] { }, GetAllLeafModules(inputFolder), mods);
         }
 
-        static void DoLayer1Modules()
+        static void DoLayer1Modules(string inputFolder, string outputFolder, IModification mods)
         {
-            DoConvertModules(GetAllLeafModules(), GetAllLayer1Modules());
+            DoConvertModules(inputFolder, outputFolder, GetAllLeafModules(inputFolder), GetAllLayer1Modules(inputFolder), mods);
         }
 
-        static void DoLayer2Modules()
+        static void DoLayer2Modules(string inputFolder, string outputFolder, IModification mods)
         {
-            DoConvertModules(GetAllLayer1Modules(), GetAllLayer2Modules());
+            DoConvertModules(inputFolder, outputFolder, GetAllLayer1Modules(inputFolder), GetAllLayer2Modules(inputFolder), mods);
         }
 
-        static List<Module> FetchIncludes()
+        static List<Module> FetchIncludes(string inputFolder, IModification mods)
         {
-            var modules = Module.ParseFile(Path.Combine(baseInputFolder, "COUNTERS.NET"),mods);
-            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "LEGO.NET"),mods));
-            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "MACROS.NET"),mods));
-            modules.AddRange(Module.ParseFile(Path.Combine(baseInputFolder, "QMACROS.NET"),mods));
+            var modules = Module.ParseFile(Path.Combine(inputFolder, "COUNTERS.NET"),mods);
+            modules.AddRange(Module.ParseFile(Path.Combine(inputFolder, "LEGO.NET"), mods));
+            modules.AddRange(Module.ParseFile(Path.Combine(inputFolder, "MACROS.NET"),mods));
+            modules.AddRange(Module.ParseFile(Path.Combine(inputFolder, "QMACROS.NET"),mods));
             foreach (var m in modules)
             {
                 m.RegisterModules(modules);
@@ -206,22 +185,33 @@ namespace K2V
             return modules;
         }
 
-        static void DoIncludes()
+        static void DoIncludes(string inputFolder, string outputFolder, IModification mods)
         {
-            var modules = FetchIncludes();
+            var modules = FetchIncludes(inputFolder, mods);
             foreach (var m in modules)
             {
-                m.Dump(Path.Combine(baseOutputFolder, m.FileName),mods);
+                m.Dump(Path.Combine(outputFolder, m.FileName),mods);
             }
         }
 
         static void Main(string[] args)
         {
-            DoIncludes();
+            if (args.Length != 2)
+            {
+                Console.WriteLine("Usage: K2V <input folder> <output folder>");
+                return;
+            }
 
-            DoLeafModules();
-            DoLayer1Modules();
-            DoLayer2Modules();
+            var inputFolder = args[0];
+            var outputFolder = args[1];
+
+            Slipstream88 mods = default;
+
+            DoIncludes(inputFolder, outputFolder, mods);
+
+            DoLeafModules(inputFolder, outputFolder, mods);
+            DoLayer1Modules(inputFolder, outputFolder, mods);
+            DoLayer2Modules(inputFolder, outputFolder, mods);
         }
     }
 }
